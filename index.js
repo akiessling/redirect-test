@@ -32,6 +32,9 @@ const spinner = ora({ spinner: 'dots2', text: `Making HTTP(S) requests with conc
 
 const q = async.queue((urls, cb) => {
   let update;
+
+  // remove any leading or trailing whitespace 
+  urls = urls.map(field => field.trim());
   options.url = siteUrl + urls[0];
   request(options, (err, res) => {
     if (err) {

@@ -77,6 +77,13 @@ test('All links are good', (t) => {
   });
 });
 
+test('Whitespace in CSV is ignored', (t) => {
+  return execa(index, ['ignore-whitespace.csv', localhost]).then((result) => {
+    t.regex(result.stderr, /✔ All links look good\.\n✔ No errors so nothing written to the csv file/);
+    t.is(result.stdout, '');
+  });
+});
+
 test('Gives a 404', (t) => {
   return execa(index, ['404.csv', localhost]).then((result) => {
     t.is(result.stderr, '✖ See errors in the csv file');
