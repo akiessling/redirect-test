@@ -19,6 +19,12 @@ test.before('Start Restify server', () => {
     return next();
   });
 
+  server.get('/about-bill', (req, res, next) => {
+    res.header('Location', 'http://localhost:9090/about/bill');
+    res.send(302);
+    return next();
+  });
+
   server.get('/about-lousie', (req, res, next) => {
     res.header('Location', 'http://localhost:9090/about-lousie');
     res.send(404);
@@ -77,6 +83,20 @@ test('All links are good', (t) => {
   });
 });
 
+test('Absolute urls work', (t) => {
+  return execa(index, ['absolute.csv', localhost]).then((result) => {
+    t.regex(result.stderr, /✔ All links look good\.\n✔ No errors so nothing written to the csv file/);
+    t.is(result.stdout, '');
+  });
+});
+
+test('CSV contains mixed statuscodes', (t) => {
+  return execa(index, ['mixed-codes.csv', localhost]).then((result) => {
+    t.regex(result.stderr, /✔ All links look good\.\n✔ No errors so nothing written to the csv file/);
+    t.is(result.stdout, '');
+  });
+});
+
 test('Whitespace in CSV is ignored', (t) => {
   return execa(index, ['ignore-whitespace.csv', localhost]).then((result) => {
     t.regex(result.stderr, /✔ All links look good\.\n✔ No errors so nothing written to the csv file/);
@@ -130,7 +150,7 @@ test.serial.cb('Read from default results CSV file', (t) => {
   fs.readFile(path.resolve('results.csv'), 'utf8', (error, contents) => {
     csv.parse(contents, (er, data) => {
       csv.stringify(data, (err, stringified) => {
-        t.is(stringified, 'old,new,status_code,actual_url\n/about-lousie,/about/lousie,404,\n');
+        t.is(stringified, 'old,new,status_code,reason\n/about-lousie,/about/lousie,404,Different status code returned\n');
         t.end(err, stringified);
       });
     });
@@ -149,7 +169,7 @@ test.serial.cb('Read from a custom CSV file', (t) => {
   fs.readFile(path.resolve('test.csv'), 'utf8', (error, contents) => {
     csv.parse(contents, (er, data) => {
       csv.stringify(data, (err, stringified) => {
-        t.is(stringified, 'old,new,status_code,actual_url\n/about-lousie,/about/lousie,404,\n');
+        t.is(stringified, 'old,new,status_code,reason\n/about-lousie,/about/lousie,404,Different status code returned\n');
         t.end(err, stringified);
       });
     });
@@ -168,7 +188,7 @@ test.serial.cb('Check that the actual URL returned is added to the CSV output if
   fs.readFile(path.resolve('location.csv'), 'utf8', (error, contents) => {
     csv.parse(contents, (er, data) => {
       csv.stringify(data, (err, stringified) => {
-        t.is(stringified, 'old,new,status_code,actual_url\n/about-linda,/about/linda,301,/linda\n');
+        t.is(stringified, 'old,new,status_code,reason\n/about-linda,/about/linda,301,http://localhost:9090/linda\n');
         t.end(err, stringified);
       });
     });

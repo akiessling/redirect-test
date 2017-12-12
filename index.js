@@ -9,7 +9,6 @@ const _ = require('underscore');
 const chalk = require('chalk');
 const async = require('async');
 const writeCSV = require('write-csv');
-const isAbsoluteUrl = require('is-absolute-url');
 const ora = require('ora');
 const program = require('commander');
 const pkgVersion = require('./package.json').version;
@@ -35,19 +34,25 @@ const q = async.queue((urls, cb) => {
 
   // remove any leading or trailing whitespace 
   urls = urls.map(field => field.trim());
-  options.url = siteUrl + urls[0];
+  
+  options.url = urls[0];
+  if (!isAbsoluteUrl(options.url)) {
+    options.url = siteUrl + urls[0];
+  }
   request(options, (err, res) => {
     if (err) {
       cb(`Error: ${err}`, null);
     } else {
-      if (res.statusCode === 301) {
-        const locPath = URL.parse(res.headers.location).pathname;
-        if (locPath !== urls[1]) {
+      const statusCode = (urls[2] ? Number(urls[2]) : 301);
+      if (res.statusCode === statusCode) {
+        const locPath = res.headers.location;
+        const target = (!isAbsoluteUrl(urls[1]) ? siteUrl + urls[1] : urls[1]);
+        if (locPath !== target) {
           update = {
             old: urls[0],
             new: urls[1],
             status_code: res.statusCode,
-            actual_url: locPath,
+            reason: locPath,
           };
         }
       } else {
@@ -55,7 +60,7 @@ const q = async.queue((urls, cb) => {
           old: urls[0],
           new: urls[1],
           status_code: res.statusCode,
-          actual_url: '',
+          reason: 'Different status code returned',
         };
       }
       if (update) {
@@ -89,9 +94,10 @@ q.drain = () => {
 };
 
 function parseCsv(contents) {
-  csv.parse(contents, (err, data) => {
+  csv.parse(contents, { relax_column_count: true }, (err, data) => {
     if (err) {
       console.error(error('Error: It looks like your file is either not a csv or has some bad formatting.'));
+      console.log(err);
       program.help();
     } else {
       q.push(data);
@@ -108,6 +114,14 @@ function readFile(file) {
       parseCsv(contents);
     }
   });
+}
+
+/**
+ * @param {string} url
+ * @returns {*}
+ */
+function isAbsoluteUrl(url) {
+  return url.startsWith('http://') || url.startsWith('https://');
 }
 
 program
